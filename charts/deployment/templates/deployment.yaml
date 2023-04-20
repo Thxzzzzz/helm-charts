@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+  # namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.app.name }} 
+spec:
+  # replicas: 1 
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }} 
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }} 
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: projectname
+                operator: In
+                values:
+                - "266"
+      containers:
+      - name: {{ .Values.app.name }}
+        image: {{ .Values.app.image }}
+        env:        
+        - name: K8S_PODNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        envFrom:
+        - configMapRef:
+            name: {{ .Values.namespace }} 
+        volumeMounts:
+        - mountPath: /data/logs  
+          name: logs
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1000Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+      volumes:
+      - name: logs
+        hostPath:
+          path: /data/266/dockerlogs/jsondata/{{ .Values.namespace }}
+      imagePullSecrets:
+      - name: aliyun
